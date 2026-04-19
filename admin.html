@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LesionLens — Admin Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="css/style.css"/>
+<style>
+/* Admin-only overrides */
+body { cursor: default; padding: 0 0 80px; }
+</style>
+</head>
+<body>
+
+<!-- Lock screen -->
+<div id="lock-screen">
+  <div class="logo" style="margin-bottom:8px">
+    <img class="logo-img" src="assets/logo.png" alt="LesionLens Logo"/>
+    <div class="logo-name">Lesion<span>Lens</span></div>
+  </div>
+  <div class="lock-card">
+    <div class="lock-title">Admin Access</div>
+    <div class="lock-sub">Enter the admin passphrase to continue</div>
+    <input class="lock-input" id="admin-pass" type="password" placeholder="Admin password" autocomplete="off"/>
+    <button class="lock-btn" onclick="checkAdmin()">Unlock Dashboard →</button>
+    <div class="lock-err" id="lock-err">⚠ Incorrect passphrase. Try again.</div>
+    <div class="lock-hint">Hackdiwas 3.0 · Team Neural</div>
+  </div>
+</div>
+
+<!-- Dashboard -->
+<div id="dashboard">
+  <div class="dash-top">
+    <div style="display:flex;align-items:center;gap:14px">
+      <div class="dash-logo">
+        <img src="assets/logo.png" alt="LesionLens Logo"/>
+        <div class="dash-logo-name">Lesion<span>Lens</span></div>
+      </div>
+      <div class="dash-badge">Admin Dashboard</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="refresh-btn" onclick="loadDashboard()">⟳ Refresh</button>
+      <button class="clear-btn"   onclick="clearAllData()">🗑 Clear all data</button>
+    </div>
+  </div>
+
+  <!-- Stat cards -->
+  <div class="stat-grid">
+    <div class="stat-card total">
+      <div class="stat-label">Total logins</div>
+      <div class="stat-num" id="s-total">0</div>
+      <div class="stat-sub">All-time sessions</div>
+    </div>
+    <div class="stat-card gmail">
+      <div class="stat-label">Gmail logins</div>
+      <div class="stat-num" id="s-gmail">0</div>
+      <div class="stat-sub">Authenticated users</div>
+      <div class="ratio-bar">
+        <div class="ratio-gmail" id="ratio-gmail" style="width:0%"></div>
+        <div class="ratio-guest" id="ratio-guest" style="width:0%"></div>
+      </div>
+    </div>
+    <div class="stat-card guest">
+      <div class="stat-label">Guest logins</div>
+      <div class="stat-num" id="s-guest">0</div>
+      <div class="stat-sub">Anonymous sessions</div>
+    </div>
+    <div class="stat-card unique">
+      <div class="stat-label">Unique users</div>
+      <div class="stat-num" id="s-unique">0</div>
+      <div class="stat-sub">Distinct Gmail accounts</div>
+    </div>
+    <div class="stat-card scans">
+      <div class="stat-label">Total scans</div>
+      <div class="stat-num" id="s-scans">0</div>
+      <div class="stat-sub">Images analysed</div>
+    </div>
+  </div>
+
+  <!-- User table + Activity log -->
+  <div class="two-col">
+    <div>
+      <div class="admin-section-title">Registered users</div>
+      <div class="table-card">
+        <div class="table-head">
+          <div>Email</div><div>Logins</div><div>First seen</div><div>Last seen</div>
+        </div>
+        <div id="user-table-body"></div>
+      </div>
+    </div>
+    <div>
+      <div class="admin-section-title">Recent activity log</div>
+      <div class="log-card" id="log-body"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Admin passphrase ──────────────────────────────
+// Change this to whatever you want
+const ADMIN_PASS = "Hackdiwas30admin";
+
+function checkAdmin() {
+  const val = document.getElementById("admin-pass").value;
+  if (val === ADMIN_PASS) {
+    document.getElementById("lock-screen").style.display = "none";
+    document.getElementById("dashboard").style.display   = "block";
+    loadDashboard();
+  } else {
+    document.getElementById("lock-err").style.display = "block";
+    document.getElementById("admin-pass").value = "";
+    document.getElementById("admin-pass").focus();
+  }
+}
+document.getElementById("admin-pass").addEventListener("keydown", e => { if (e.key === "Enter") checkAdmin(); });
+
+// ── Data helpers ──────────────────────────────────
+function getStats() {
+  try { return JSON.parse(localStorage.getItem("ll_stats") || "{}"); } catch { return {}; }
+}
+
+function fmt(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" }) + " " +
+         d.toLocaleTimeString("en-IN", { hour:"2-digit", minute:"2-digit" });
+}
+
+function fmtShort(iso) {
+  if (!iso) return "—";
+  const diff = Math.round((Date.now() - new Date(iso)) / 60000);
+  if (diff < 1)    return "just now";
+  if (diff < 60)   return diff + "m ago";
+  if (diff < 1440) return Math.round(diff / 60) + "h ago";
+  return Math.round(diff / 1440) + "d ago";
+}
+
+function initial(email) { return (email || "G").charAt(0).toUpperCase(); }
+
+// ── Load dashboard ────────────────────────────────
+function loadDashboard() {
+  const s = getStats();
+  const total  = s.total || 0;
+  const gmail  = s.gmail || 0;
+  const guest  = s.guest || 0;
+  const users  = s.users || {};
+  const scans  = s.scans || 0;
+  const uniqueCount = Object.keys(users).length;
+  const log    = s.log   || [];
+
+  animNum("s-total",  total);
+  animNum("s-gmail",  gmail);
+  animNum("s-guest",  guest);
+  animNum("s-unique", uniqueCount);
+  animNum("s-scans",  scans);
+
+  // Ratio bar
+  const gp  = total > 0 ? Math.round((gmail / total) * 100) : 0;
+  const gup = total > 0 ? Math.round((guest / total) * 100) : 0;
+  setTimeout(() => {
+    document.getElementById("ratio-gmail").style.width = gp  + "%";
+    document.getElementById("ratio-guest").style.width = gup + "%";
+  }, 200);
+
+  // User table
+  const tbody  = document.getElementById("user-table-body");
+  tbody.innerHTML = "";
+  const sorted = Object.values(users).sort((a, b) => b.count - a.count);
+  if (sorted.length === 0) {
+    tbody.innerHTML = '<div class="empty-state">No registered users yet</div>';
+  } else {
+    sorted.forEach(u => {
+      const row = document.createElement("div");
+      row.className = "table-row";
+      row.innerHTML = `
+        <div class="t-email"><div class="t-avatar">${initial(u.email)}</div>${u.email}</div>
+        <div class="t-count">${u.count}</div>
+        <div class="t-date">${fmtShort(u.first)}</div>
+        <div class="t-date">${fmtShort(u.last)}</div>
+      `;
+      tbody.appendChild(row);
+    });
+  }
+
+  // Activity log
+  const logBody = document.getElementById("log-body");
+  logBody.innerHTML = "";
+  if (log.length === 0) {
+    logBody.innerHTML = '<div class="empty-state">No activity yet</div>';
+  } else {
+    log.forEach(entry => {
+      const item = document.createElement("div");
+      item.className = "log-item";
+      const isGuest = entry.type === "guest";
+      item.innerHTML = `
+        <div class="log-dot ${entry.type}"></div>
+        <div class="log-type ${entry.type}">${entry.type}</div>
+        <div class="log-email">${isGuest ? "Anonymous guest" : entry.email}</div>
+        <div class="log-time">${fmtShort(entry.time)}</div>
+      `;
+      logBody.appendChild(item);
+    });
+  }
+}
+
+function animNum(id, target) {
+  const el  = document.getElementById(id);
+  const dur = 800, s = performance.now();
+  (function t(now) {
+    const p = Math.min((now - s) / dur, 1), e = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(target * e);
+    if (p < 1) requestAnimationFrame(t);
+  })(performance.now());
+}
+
+function clearAllData() {
+  if (!confirm("Clear ALL login and scan data? This cannot be undone.")) return;
+  localStorage.removeItem("ll_stats");
+  loadDashboard();
+}
+</script>
+</body>
+</html>
