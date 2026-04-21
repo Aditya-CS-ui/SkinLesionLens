@@ -17,7 +17,14 @@ from PIL import Image
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from dotenv import load_dotenv
+import gdown
+MODEL_PATH = "best_model.pth"
+MODEL_GDRIVE_ID = "1BL5CRXXBKrOoasOwG2rRlDsvnhWxhqw4"  # paste just the ID from the link
 
+if not os.path.exists(MODEL_PATH):
+    print("[LesionLens] Downloading model weights from Google Drive...")
+    gdown.download(id=MODEL_GDRIVE_ID, output=MODEL_PATH, quiet=False)
+    print("[LesionLens] Download complete.")
 load_dotenv()
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
