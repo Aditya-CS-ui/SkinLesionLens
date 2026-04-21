@@ -538,11 +538,5 @@ def get_user_reports():
     return jsonify({"reports": reports})
 
 if __name__ == "__main__":
-    print("\n" + "=" * 55)
-    print("  LesionLens API — Built by Team Neural Only.")
-    print("  EfficientNet-B3 (timm) · HAM10000 · 7 classes")
-    print(f"  Device  : {DEVICE}")
-    print(f"  Chat API: {'✓ Ready' if OPENAI_API_KEY else '✗ No OPENAI_API_KEY in .env'}")
-    print("  Running : http://localhost:5000")
-    print("=" * 55 + "\n")
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)

@@ -7,3 +7,5 @@ timm
 numpy
 Pillow
 matplotlib
+requests
+gunicorn
