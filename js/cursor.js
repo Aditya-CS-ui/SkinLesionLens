@@ -1,8 +1,3 @@
-/* ═══════════════════════════════════════════════
-   LesionLens — cursor.js
-   Custom cursor with ring follow effect
-   ═══════════════════════════════════════════════ */
-
 (function () {
   const cursor = document.getElementById("cursor");
   const ring   = document.getElementById("cursor-ring");
@@ -25,7 +20,6 @@
     requestAnimationFrame(tick);
   })();
 
-  // Scale ring on interactive elements
   const selectors = "button, input, a, [onclick], .class-chip, .qp, .abcde-row, .nav-pill";
   document.querySelectorAll(selectors).forEach(el => {
     el.addEventListener("mouseenter", () => {

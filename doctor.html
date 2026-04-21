@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LesionLens — Doctor Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="css/style.css"/>
+<style>
+body { cursor:default; padding:0 0 80px; }
+.dp-wrap { max-width:1100px; margin:0 auto; padding:0 32px; }
+.dp-topbar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:18px 32px; border-bottom:1px solid var(--border);
+  background:rgba(14,6,8,0.9); backdrop-filter:blur(16px);
+  position:sticky; top:0; z-index:100;
+}
+.dp-logo-name { font-size:18px; font-weight:700; letter-spacing:-0.5px; color:var(--text); }
+.dp-logo-name span { color:var(--cyan); }
+.dp-portal-badge {
+  font-size:10px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase;
+  color:var(--cyan); background:rgba(232,82,106,0.08);
+  border:1px solid var(--border); padding:3px 12px; border-radius:99px;
+}
+.dp-live-dot { width:7px; height:7px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; }
+.dp-refresh-txt { font-size:11px; color:var(--muted); }
+.dp-back-link { font-size:12px; color:var(--muted); text-decoration:none; transition:color 0.2s; }
+.dp-back-link:hover { color:var(--cyan); }
+#dp-lock {
+  min-height:100vh; display:flex; align-items:center;
+  justify-content:center; flex-direction:column; gap:16px;
+}
+.dp-lock-logo { font-size:22px; font-weight:700; color:var(--text); }
+.dp-lock-logo span { color:var(--cyan); }
+.dp-lock-card {
+  background:var(--glass); border:1px solid var(--border2);
+  border-radius:20px; padding:40px 44px; width:340px;
+  position:relative; overflow:hidden;
+}
+.dp-lock-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  background:linear-gradient(90deg, var(--cyan), var(--purple));
+}
+.dp-lock-title { font-size:18px; font-weight:700; color:var(--text); margin-bottom:6px; }
+.dp-lock-sub   { font-size:13px; color:var(--muted); margin-bottom:24px; line-height:1.5; }
+.dp-lock-input {
+  width:100%; padding:12px 16px; background:var(--glass2);
+  border:1px solid var(--border); border-radius:10px;
+  color:var(--text); font-family:var(--mono); font-size:14px;
+  outline:none; transition:border-color 0.2s; margin-bottom:12px;
+  letter-spacing:0.08em; box-sizing:border-box;
+}
+.dp-lock-input:focus { border-color:var(--cyan); }
+.dp-lock-btn {
+  width:100%; padding:13px;
+  background:linear-gradient(135deg, var(--cyan), var(--purple));
+  border:none; border-radius:10px; color:#fff;
+  font-family:var(--display); font-size:14px; font-weight:700;
+  cursor:pointer; transition:opacity 0.2s;
+}
+.dp-lock-btn:hover { opacity:0.85; }
+.dp-lock-err  { font-size:12px; color:var(--red); margin-top:8px; display:none; }
+.dp-lock-hint { font-size:11px; color:var(--muted); opacity:0.5; margin-top:20px; text-align:center; }
+.dp-stat-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:32px 0 28px; }
+.dp-stat-card {
+  background:var(--glass); border:1px solid var(--border);
+  border-radius:16px; padding:22px 20px; position:relative; overflow:hidden;
+}
+.dp-stat-card::after {
+  content:''; position:absolute; top:-40px; right:-40px;
+  width:120px; height:120px; border-radius:50%; pointer-events:none;
+}
+.dp-stat-card.s-total::after   { background:radial-gradient(circle,rgba(232,82,106,0.07),transparent 70%); }
+.dp-stat-card.s-pending::after { background:radial-gradient(circle,rgba(233,196,106,0.07),transparent 70%); }
+.dp-stat-card.s-approved::after{ background:radial-gradient(circle,rgba(244,162,97,0.07),transparent 70%); }
+.dp-stat-card.s-rejected::after{ background:radial-gradient(circle,rgba(255,51,85,0.07),transparent 70%); }
+.dp-stat-label { font-family:var(--mono); font-size:10px; color:var(--muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px; }
+.dp-stat-num   { font-size:32px; font-weight:700; font-family:var(--mono); }
+.dp-stat-sub   { font-size:11px; color:var(--muted); margin-top:4px; }
+.dp-stat-card.s-total    .dp-stat-num { color:var(--cyan); }
+.dp-stat-card.s-pending  .dp-stat-num { color:var(--amber); }
+.dp-stat-card.s-approved .dp-stat-num { color:var(--green); }
+.dp-stat-card.s-rejected .dp-stat-num { color:var(--red); }
+.dp-filter-row { display:flex; align-items:center; gap:8px; margin-bottom:20px; flex-wrap:wrap; }
+.dp-tab {
+  padding:7px 18px; border-radius:99px; font-size:12px; font-weight:500;
+  cursor:pointer; border:1px solid var(--border); color:var(--muted);
+  background:transparent; font-family:var(--display); transition:all 0.2s;
+}
+.dp-tab:hover { border-color:var(--border2); color:var(--text); }
+.dp-tab.active          { background:rgba(232,82,106,0.08);  border-color:var(--border2);             color:var(--cyan);  }
+.dp-tab.f-pending.active{ background:rgba(233,196,106,0.08); border-color:rgba(233,196,106,0.3);      color:var(--amber); }
+.dp-tab.f-ok.active     { background:rgba(244,162,97,0.06);  border-color:rgba(244,162,97,0.25);      color:var(--green); }
+.dp-tab.f-rej.active    { background:rgba(255,51,85,0.08);   border-color:rgba(255,51,85,0.3);        color:var(--red);   }
+.dp-tab-refresh { margin-left:auto; }
+.dp-report-list { display:flex; flex-direction:column; gap:10px; }
+.dp-empty { text-align:center; padding:60px 20px; color:var(--muted); font-size:14px; }
+
+.dp-rcard {
+  background:var(--glass); border:1px solid var(--border);
+  border-radius:14px; overflow:hidden;
+  transition:border-color 0.2s; cursor:pointer;
+}
+.dp-rcard:hover { border-color:var(--border2); }
+.dp-rcard.pending  { border-left:3px solid var(--amber); }
+.dp-rcard.approved { border-left:3px solid var(--green); }
+.dp-rcard.rejected { border-left:3px solid var(--red); }
+
+.dp-rcard-header { display:flex; align-items:center; gap:12px; padding:16px 20px; flex-wrap:wrap; }
+.dp-rid {
+  font-family:var(--mono); font-size:11px; color:var(--cyan);
+  background:rgba(232,82,106,0.08); padding:3px 10px; border-radius:6px; white-space:nowrap;
+}
+.dp-rlabel { font-size:14px; font-weight:600; color:var(--text); flex:1; min-width:120px; }
+.dp-rconf  { font-family:var(--mono); font-size:12px; color:var(--muted); white-space:nowrap; }
+.dp-rrisk  { font-size:11px; font-weight:500; padding:3px 10px; border-radius:99px; white-space:nowrap; }
+.rr-high   { background:rgba(255,51,85,0.12);  color:var(--red);   }
+.rr-mod    { background:rgba(233,196,106,0.1); color:var(--amber); }
+.rr-low    { background:rgba(244,162,97,0.08); color:var(--green); }
+.dp-rstatus{ font-size:11px; font-weight:600; padding:3px 12px; border-radius:99px; white-space:nowrap; }
+.rs-pending { background:rgba(233,196,106,0.1); color:var(--amber); }
+.rs-approved{ background:rgba(244,162,97,0.08); color:var(--green); }
+.rs-rejected{ background:rgba(255,51,85,0.1);  color:var(--red);   }
+.dp-rtime  { font-size:11px; color:var(--muted); margin-left:auto; white-space:nowrap; }
+.dp-rdetail { display:none; border-top:1px solid var(--border); padding:20px; }
+.dp-rdetail.open { display:block; }
+
+.dp-detail-grid { display:grid; grid-template-columns:200px 1fr; gap:16px; margin-bottom:14px; }
+@media(max-width:600px){ .dp-detail-grid { grid-template-columns:1fr; } }
+
+.dp-heat-wrap {
+  width:200px; height:200px; border-radius:10px; overflow:hidden;
+  background:var(--glass2); border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+}
+.dp-heat-wrap img { width:100%; height:100%; object-fit:cover; }
+.dp-heat-none { font-size:12px; color:var(--muted); text-align:center; padding:16px; }
+
+.dp-xai-block {
+  background:rgba(232,82,106,0.04); border:1px solid var(--border);
+  border-radius:10px; padding:14px 16px; margin-bottom:12px;
+}
+.dp-xai-lbl { font-family:var(--mono); font-size:10px; color:var(--cyan); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px; }
+.dp-xai-txt { font-size:13px; color:var(--muted); line-height:1.7; }
+
+.dp-rconf.low-conf { color: var(--red); font-weight: 600; }
+.dp-rconf.med-conf { color: var(--amber); font-weight: 500; }
+.dp-rconf.high-conf { color: var(--green); font-weight: 500; }
+.dp-mini-bar  { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+.dp-mbar-name { font-size:11px; color:var(--muted); width:155px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.dp-mbar-track{ flex:1; height:4px; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden; }
+.dp-mbar-fill { height:100%; border-radius:2px; background:linear-gradient(90deg,var(--cyan),var(--green)); transition:width 0.6s ease; }
+.dp-mbar-fill.top { background:linear-gradient(90deg,var(--red),var(--amber)); }
+.dp-mbar-pct  { font-size:11px; font-family:var(--mono); color:var(--muted); width:40px; text-align:right; }
+.dp-action {
+  background:var(--glass2); border:1px solid var(--border);
+  border-radius:12px; padding:18px 20px; margin-top:4px;
+}
+.dp-action-title { font-size:13px; font-weight:600; color:var(--text); margin-bottom:12px; }
+.dp-action-btns  { display:flex; gap:10px; margin-bottom:12px; }
+.dp-btn-approve {
+  flex:1; padding:11px; border-radius:10px; font-size:13px; font-weight:600;
+  font-family:var(--display); cursor:pointer; transition:all 0.2s;
+  background:rgba(244,162,97,0.08); border:1px solid rgba(244,162,97,0.25); color:var(--green);
+}
+.dp-btn-approve:hover { background:rgba(244,162,97,0.15); }
+.dp-btn-reject {
+  flex:1; padding:11px; border-radius:10px; font-size:13px; font-weight:600;
+  font-family:var(--display); cursor:pointer; transition:all 0.2s;
+  background:rgba(255,51,85,0.08); border:1px solid rgba(255,51,85,0.25); color:var(--red);
+}
+.dp-btn-reject:hover { background:rgba(255,51,85,0.15); }
+.dp-note-area {
+  width:100%; background:var(--glass2); border:1px solid var(--border);
+  border-radius:10px; padding:12px 14px; font-size:13px; color:var(--text);
+  outline:none; resize:vertical; min-height:72px; font-family:var(--display);
+  box-sizing:border-box; margin-bottom:10px; display:none; transition:border-color 0.2s;
+}
+.dp-note-area:focus { border-color:rgba(255,51,85,0.5); }
+.dp-note-area.show  { display:block; }
+.dp-confirm {
+  width:100%; padding:12px; border-radius:10px; font-size:13px; font-weight:700;
+  font-family:var(--display); cursor:pointer; border:none;
+  transition:opacity 0.2s; display:none;
+}
+.dp-confirm.show { display:block; }
+.dp-confirm:hover { opacity:0.85; }
+.dp-confirm.c-approve { background:linear-gradient(135deg,var(--cyan),var(--green)); color:#fff; }
+.dp-confirm.c-reject  { background:linear-gradient(135deg,var(--red),var(--amber)); color:#fff; }
+.dp-reviewed-box { font-size:13px; color:var(--muted); line-height:1.6; }
+.dp-reviewed-box strong { color:var(--text); }
+</style>
+<script>document.addEventListener("DOMContentLoaded",function(){document.body.style.opacity="1"});</script>
+</head>
+<body>
+<div id="dp-lock">
+  <div class="dp-lock-logo">Lesion<span>Lens</span></div>
+  <div class="dp-lock-card">
+    <div class="dp-lock-title">Doctor Portal</div>
+    <div class="dp-lock-sub">Restricted access · Dermatologist use only</div>
+    <input class="dp-lock-input" id="dp-pass" type="password" placeholder="Portal passphrase" autocomplete="off"/>
+    <button class="dp-lock-btn" onclick="checkPass()">Access Portal →</button>
+    <div class="dp-lock-err" id="dp-err">⚠ Incorrect passphrase. Try again.</div>
+    <div class="dp-lock-hint">Built by Team Neural Only.</div>
+  </div>
+</div>
+<div id="dp-dash" style="display:none">
+
+  <div class="dp-topbar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="dp-logo-name">Lesion<span>Lens</span></div>
+      <div class="dp-portal-badge">Doctor Portal</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="dp-live-dot"></div>
+      <div class="dp-refresh-txt" id="dp-refresh-txt">Loading…</div>
+      <a href="index.html" class="dp-back-link">← Patient site</a>
+    </div>
+  </div>
+
+  <div class="dp-wrap">
+    <div class="dp-stat-strip">
+      <div class="dp-stat-card s-total">
+        <div class="dp-stat-label">Total reports</div>
+        <div class="dp-stat-num" id="ds-total">0</div>
+        <div class="dp-stat-sub">All submissions</div>
+      </div>
+      <div class="dp-stat-card s-pending">
+        <div class="dp-stat-label">Pending</div>
+        <div class="dp-stat-num" id="ds-pending">0</div>
+        <div class="dp-stat-sub">Awaiting review</div>
+      </div>
+      <div class="dp-stat-card s-approved">
+        <div class="dp-stat-label">Approved</div>
+        <div class="dp-stat-num" id="ds-approved">0</div>
+        <div class="dp-stat-sub">Confirmed positive</div>
+      </div>
+      <div class="dp-stat-card s-rejected">
+        <div class="dp-stat-label">Rejected</div>
+        <div class="dp-stat-num" id="ds-rejected">0</div>
+        <div class="dp-stat-sub">False positives</div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="dp-filter-row">
+      <button class="dp-tab active"    onclick="setFilter('all',this)">All</button>
+      <button class="dp-tab f-pending" onclick="setFilter('pending',this)">Pending</button>
+      <button class="dp-tab f-ok"      onclick="setFilter('approved',this)">Approved</button>
+      <button class="dp-tab f-rej"     onclick="setFilter('rejected',this)">Rejected</button>
+      <button class="dp-tab dp-tab-refresh" onclick="loadReports()">⟳ Refresh</button>
+    </div>
+
+    <!-- Report list -->
+    <div class="dp-report-list" id="dp-report-list">
+      <div class="dp-empty">Loading reports…</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="dp-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+  <div style="background:var(--glass); border:1px solid var(--border); border-radius:20px; padding:40px; max-width:400px; text-align:center;">
+    <div id="dp-modal-title" style="font-size:18px; font-weight:700; color:var(--text); margin-bottom:20px;"></div>
+    <button id="dp-download-btn" style="padding:12px 24px; background:linear-gradient(135deg, var(--cyan), var(--purple)); border:none; border-radius:10px; color:#fff; font-weight:600; cursor:pointer; margin-bottom:20px;">Download PDF</button>
+    <button onclick="closeModal()" style="padding:10px 20px; background:transparent; border:1px solid var(--border); border-radius:10px; color:var(--text); cursor:pointer;">Close</button>
+  </div>
+</div>
+
+<script src="js/doctor.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</body>
+</html>

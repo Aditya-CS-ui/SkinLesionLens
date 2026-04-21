@@ -1,22 +1,20 @@
-/* ═══════════════════════════════════════════════
-   LesionLens — app.js
-   Upload · Inference · Results · Detail page
-   ═══════════════════════════════════════════════ */
 
-// ════════════════════════════════════════════════
-//  ▼▼▼  PASTE YOUR FLASK API URL HERE  ▼▼▼
-//  Local:    "http://localhost:5000/predict"
-//  Deployed: "https://your-api.onrender.com/predict"
-// ════════════════════════════════════════════════
 const API_URL = "http://localhost:5000/predict";
 
-// ── Auth guard ───────────────────────────────────
-if (!sessionStorage.getItem("nd_auth")) {
+const auth = sessionStorage.getItem("nd_auth");
+if (!auth) {
   window.location.href = "login.html";
 }
+const isGuest = auth === "guest";
 document.body.style.opacity = "1";
 
-// ── Class data ───────────────────────────────────
+if (isGuest) {
+  const uploadCard = document.querySelector('.main-grid .card');
+  if (uploadCard) {
+    uploadCard.style.display = 'none';
+  }
+}
+
 const CLASSES = [
   {
     name:"Melanocytic Nevi", code:"nv", color:"#00ff88", risk:"low",
@@ -97,7 +95,6 @@ const CLASSES = [
   }
 ];
 
-// ── Build class chips ─────────────────────────────
 const chipsContainer = document.getElementById("class-chips");
 if (chipsContainer) {
   CLASSES.forEach((cls, idx) => {
@@ -124,7 +121,6 @@ if (chipsContainer) {
   });
 }
 
-// ── Detail page ───────────────────────────────────
 function openDetail(idx) {
   const c = CLASSES[idx];
   document.getElementById("detail-breadcrumb-name").textContent = c.name;
@@ -182,7 +178,6 @@ function buildChart(data) {
 
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeDetail(); });
 
-// ── Upload ────────────────────────────────────────
 const dropZone   = document.getElementById("drop-zone");
 const fileInput  = document.getElementById("file-input");
 const previewWrap = document.getElementById("preview-wrap");
@@ -234,7 +229,6 @@ function clearResults() {
   lastResult = null;
 }
 
-// ── Inference ─────────────────────────────────────
 async function runAnalysis() {
   if (!selectedFile) return;
   setLoading(true); hideError(); clearResults();
@@ -249,7 +243,6 @@ async function runAnalysis() {
     }
     const data = await r.json();
     lastResult = data;
-    // Track scan count
     try {
       const s = JSON.parse(localStorage.getItem("ll_stats") || "{}");
       s.scans = (s.scans || 0) + 1;
@@ -300,9 +293,12 @@ function renderResults(data) {
   cont.querySelectorAll(".bar-fill").forEach((el, i) =>
     setTimeout(() => el.style.width = el.dataset.w + "%", 100 + i * 80)
   );
+
+  if (typeof window.runXAI === "function" && selectedFile) {
+    window.runXAI(selectedFile);
+  }
 }
 
-// ── Utilities ─────────────────────────────────────
 function animNum(el, from, to, dur, fmt = n => n) {
   const s = performance.now();
   (function t(now) {
@@ -334,7 +330,6 @@ function logout() {
   setTimeout(() => window.location.href = "login.html", 400);
 }
 
-// Expose globally
 window.runAnalysis  = runAnalysis;
 window.clearImage   = clearImage;
 window.openDetail   = openDetail;

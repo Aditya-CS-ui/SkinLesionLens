@@ -7,14 +7,19 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="css/style.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 </head>
 <body>
+<video autoplay muted loop id="bg-video" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; opacity: 0.35; filter: blur(6px) saturate(0.5) brightness(0.4);">
+  <source src="assets/background.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+<div style="position: fixed; inset: 0; z-index: -1; background: rgba(5,13,26,0.72); pointer-events: none;"></div>
 <div id="cursor"></div>
 <div id="cursor-ring"></div>
 <canvas id="bg-canvas"></canvas>
 <div class="noise"></div>
 
-<!-- ── Detail Page Overlay ── -->
 <div id="detail-overlay">
   <div class="detail-top-bar"></div>
   <div class="detail-nav">
@@ -53,7 +58,6 @@
 
 <div class="wrap">
 
-  <!-- Header -->
   <header>
     <div class="logo">
       <img class="logo-img" src="assets/logo.png" alt="LesionLens Logo"/>
@@ -64,11 +68,11 @@
       <div class="nav-pill">EfficientNet-B3</div>
       <div class="nav-pill">HAM10000</div>
       <div class="nav-pill admin-pill" onclick="window.open('admin.html')">⬡ admin</div>
+      <div class="nav-pill admin-pill" onclick="window.open('doctor.html')" style="color:#00d2ff;border-color:rgba(0,210,255,0.3)">&#43; doctor</div>
       <div class="nav-pill logout" onclick="logout()">← logout</div>
     </div>
   </header>
 
-  <!-- Hero -->
   <div class="hero">
     <div class="hero-label-index">AI-powered dermatoscopy</div>
     <h1>
@@ -78,18 +82,14 @@
     <p class="hero-sub">Deep learning classification across 7 diagnostic categories. Upload a dermoscopy image for instant AI-assisted analysis.</p>
   </div>
 
-  <!-- Stats -->
   <div class="stats-bar">
     <div class="stat"><div class="stat-val">10,015</div><div class="stat-key">Training images</div></div>
-    <div class="stat"><div class="stat-val">84.07%</div><div class="stat-key">CV accuracy</div></div>
+    <div class="stat"><div class="stat-val">84.47%</div><div class="stat-key">CV accuracy</div></div>
     <div class="stat"><div class="stat-val">B3</div><div class="stat-key">EfficientNet model</div></div>
     <div class="stat"><div class="stat-val" id="acc-stat">—</div><div class="stat-key">Top confidence</div></div>
   </div>
-
-  <!-- Main grid -->
   <div class="main-grid">
 
-    <!-- Upload card -->
     <div class="card">
       <div class="card-title"><div class="card-title-dot"></div>Image input</div>
       <div class="drop-zone" id="drop-zone">
@@ -112,7 +112,6 @@
       </button>
     </div>
 
-    <!-- Diagnostic classes -->
     <div class="info-card">
       <div class="card-title">
         <div class="card-title-dot"></div>
@@ -123,14 +122,11 @@
     </div>
   </div>
 
-  <!-- Error / Loader -->
   <div id="error-box"></div>
   <div id="loader">
     <div class="loader-ring"></div>
     <div class="loader-text">Running inference<span class="loader-dots"><span>.</span><span>.</span><span>.</span></span></div>
   </div>
-
-  <!-- Results -->
   <div id="results-section">
     <div class="results-grid">
       <div class="diagnosis-card">
@@ -164,11 +160,69 @@
     </div>
 
     <div class="disclaimer">
-      <strong>⚠ Research prototype only.</strong> LesionLens is a Hackdiwas 3.0 academic project and is <strong>not a certified medical device</strong>. Do not use for clinical diagnosis. Always consult a qualified dermatologist.
+      <strong>⚠ Research prototype only.</strong> LesionLens is an academic project and is <strong>not a certified medical device</strong>. Do not use for clinical diagnosis. Always consult a qualified dermatologist.
     </div>
+
+    <div id="xai-section" style="display:none">
+      <div class="section-header" style="margin:48px 0 28px">
+        <div class="section-header-line"></div>
+        <div class="section-header-title">&#128300; Explainable AI — Grad-CAM</div>
+        <div class="section-header-line"></div>
+      </div>
+      <div class="xai-grid">
+        <div class="card xai-heatmap-card">
+          <div class="card-title"><div class="card-title-dot"></div>Activation heatmap</div>
+          <div class="xai-img-wrap">
+            <img id="xai-heatmap-img" src="" alt="Grad-CAM heatmap" style="display:none"/>
+            <div id="xai-loader" class="xai-loader-wrap">
+              <div class="loader-ring"></div>
+              <div class="loader-text" style="font-size:12px">Generating Grad-CAM<span class="loader-dots"><span>.</span><span>.</span><span>.</span></span></div>
+            </div>
+          </div>
+          <div class="xai-legend">
+            <div class="xai-leg-item"><div class="xai-leg-dot" style="background:#3399ff"></div><span>Low activation</span></div>
+            <div class="xai-leg-item"><div class="xai-leg-dot" style="background:#ffff00"></div><span>Medium</span></div>
+            <div class="xai-leg-item"><div class="xai-leg-dot" style="background:#ff3333"></div><span>High activation</span></div>
+          </div>
+        </div>
+        <div class="card xai-note-card">
+          <div class="card-title"><div class="card-title-dot"></div>Model reasoning</div>
+          <div class="xai-note-body">
+            <div class="xai-note-icon">&#129504;</div>
+            <p class="xai-note-text" id="xai-note-text">Running analysis…</p>
+          </div>
+          <div class="xai-cause-label">Primary visual features detected</div>
+          <div class="xai-cause-tags" id="xai-cause-tags"></div>
+          <div id="hospital-section" style="display:none">
+            <div class="xai-divider"></div>
+            <div class="xai-hospital-title">&#128205; Nearest biopsy centre</div>
+            <div class="xai-hospital-sub">High-risk detection — location services activated</div>
+            <div id="hospital-loader" class="xai-loader-wrap" style="height:60px">
+              <div class="loader-ring" style="width:22px;height:22px;border-width:2px"></div>
+              <div class="loader-text" style="font-size:12px">Locating nearest hospital<span class="loader-dots"><span>.</span><span>.</span><span>.</span></span></div>
+            </div>
+            <div id="hospital-map" style="height:220px;border-radius:10px;overflow:hidden;display:none;margin-top:12px"></div>
+            <div id="hospital-info" class="hospital-info-card" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+      <div class="doctor-submit-bar" id="doctor-submit-bar">
+        <div class="doctor-submit-info">
+          <div class="doctor-submit-title">&#128203; Send report for dermatologist review</div>
+          <div class="doctor-submit-sub">The AI result + Grad-CAM heatmap will be submitted to the doctor portal for expert verification.</div>
+        </div>
+        <button class="btn-gradient doctor-submit-btn" id="submit-report-btn" onclick="submitReport()">
+          <span>Send to Doctor &#8594;</span>
+        </button>
+        <button class="btn-gradient doctor-submit-btn" style="background: linear-gradient(135deg, #9d4edd, #c77dff);" onclick="checkReports()">
+          <span>Check My Reports &#128203;</span>
+        </button>
+      </div>
+      <div id="report-status-box" style="display:none" class="report-status-box"></div>
+    </div>
+
   </div>
 
-  <!-- Chatbot -->
   <div class="chat-section">
     <div class="section-header">
       <div class="section-header-line"></div>
@@ -201,12 +255,22 @@
       </div>
     </div>
   </div>
+  <div id="reinsert-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+    <div style="background:var(--glass); border:1px solid var(--border); border-radius:20px; padding:40px; max-width:400px; text-align:center;">
+      <div style="font-size:18px; font-weight:700; color:var(--text); margin-bottom:20px;">Irrelevant Image Detected</div>
+      <div style="color:var(--muted); margin-bottom:20px;">Please upload a skin lesion image only.</div>
+      <button onclick="closeReinsertModal()" style="padding:12px 24px; background:linear-gradient(135deg, var(--cyan), var(--purple)); border:none; border-radius:10px; color:#fff; font-weight:600; cursor:pointer;">Upload New Image</button>
+    </div>
+  </div>
 
-</div><!-- /wrap -->
+</div>
 
 <script src="js/particles.js"></script>
 <script src="js/cursor.js"></script>
 <script src="js/app.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/xai.js"></script>
 <script src="js/chat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </body>
 </html>

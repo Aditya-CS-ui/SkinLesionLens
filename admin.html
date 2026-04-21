@@ -8,13 +8,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="css/style.css"/>
 <style>
-/* Admin-only overrides */
 body { cursor: default; padding: 0 0 80px; }
 </style>
+<script>document.addEventListener("DOMContentLoaded",function(){document.body.style.opacity="1"});</script>
 </head>
 <body>
 
-<!-- Lock screen -->
 <div id="lock-screen">
   <div class="logo" style="margin-bottom:8px">
     <img class="logo-img" src="assets/logo.png" alt="LesionLens Logo"/>
@@ -26,12 +25,11 @@ body { cursor: default; padding: 0 0 80px; }
     <input class="lock-input" id="admin-pass" type="password" placeholder="Admin password" autocomplete="off"/>
     <button class="lock-btn" onclick="checkAdmin()">Unlock Dashboard →</button>
     <div class="lock-err" id="lock-err">⚠ Incorrect passphrase. Try again.</div>
-    <div class="lock-hint">Hackdiwas 3.0 · Team Neural</div>
+    <div class="lock-hint">Built by Team Neural Only.</div>
   </div>
 </div>
 
-<!-- Dashboard -->
-<div id="dashboard">
+<div id="dashboard" style="display:none">
   <div class="dash-top">
     <div style="display:flex;align-items:center;gap:14px">
       <div class="dash-logo">
@@ -46,7 +44,6 @@ body { cursor: default; padding: 0 0 80px; }
     </div>
   </div>
 
-  <!-- Stat cards -->
   <div class="stat-grid">
     <div class="stat-card total">
       <div class="stat-label">Total logins</div>
@@ -79,7 +76,6 @@ body { cursor: default; padding: 0 0 80px; }
     </div>
   </div>
 
-  <!-- User table + Activity log -->
   <div class="two-col">
     <div>
       <div class="admin-section-title">Registered users</div>
@@ -99,34 +95,50 @@ body { cursor: default; padding: 0 0 80px; }
 </div>
 
 <script>
-// ── Admin passphrase ──────────────────────────────
-// Change this to whatever you want
-const ADMIN_PASS = "Hackdiwas30admin";
-
 function checkAdmin() {
-  const val = document.getElementById("admin-pass").value;
-  if (val === ADMIN_PASS) {
-    document.getElementById("lock-screen").style.display = "none";
-    document.getElementById("dashboard").style.display   = "block";
-    loadDashboard();
-  } else {
-    document.getElementById("lock-err").style.display = "block";
-    document.getElementById("admin-pass").value = "";
-    document.getElementById("admin-pass").focus();
-  }
-}
-document.getElementById("admin-pass").addEventListener("keydown", e => { if (e.key === "Enter") checkAdmin(); });
+  const val = document.getElementById("admin-pass").value.trim();
+  if (!val) return;
 
-// ── Data helpers ──────────────────────────────────
+  fetch("http://localhost:5000/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email:    document.getElementById("admin-pass").dataset.adminEmail || "",
+      password: val,
+      admin:    true
+    })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.status === "ok") {
+      document.getElementById("lock-screen").style.display = "none";
+      document.getElementById("dashboard").style.display   = "block";
+      loadDashboard();
+    } else {
+      showLockErr();
+    }
+  })
+  .catch(() => {
+    // Fallback for demo: check via a simple flag in URL (for local dev only)
+    // Remove this in production
+    showLockErr();
+  });
+}
+
+function showLockErr() {
+  document.getElementById("lock-err").style.display = "block";
+  document.getElementById("admin-pass").value = "";
+  document.getElementById("admin-pass").focus();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("admin-pass").addEventListener("keydown", e => {
+    if (e.key === "Enter") checkAdmin();
+  });
+});
+
 function getStats() {
   try { return JSON.parse(localStorage.getItem("ll_stats") || "{}"); } catch { return {}; }
-}
-
-function fmt(iso) {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" }) + " " +
-         d.toLocaleTimeString("en-IN", { hour:"2-digit", minute:"2-digit" });
 }
 
 function fmtShort(iso) {
@@ -140,7 +152,6 @@ function fmtShort(iso) {
 
 function initial(email) { return (email || "G").charAt(0).toUpperCase(); }
 
-// ── Load dashboard ────────────────────────────────
 function loadDashboard() {
   const s = getStats();
   const total  = s.total || 0;
@@ -157,7 +168,6 @@ function loadDashboard() {
   animNum("s-unique", uniqueCount);
   animNum("s-scans",  scans);
 
-  // Ratio bar
   const gp  = total > 0 ? Math.round((gmail / total) * 100) : 0;
   const gup = total > 0 ? Math.round((guest / total) * 100) : 0;
   setTimeout(() => {
@@ -165,8 +175,7 @@ function loadDashboard() {
     document.getElementById("ratio-guest").style.width = gup + "%";
   }, 200);
 
-  // User table
-  const tbody  = document.getElementById("user-table-body");
+  const tbody = document.getElementById("user-table-body");
   tbody.innerHTML = "";
   const sorted = Object.values(users).sort((a, b) => b.count - a.count);
   if (sorted.length === 0) {
@@ -185,7 +194,6 @@ function loadDashboard() {
     });
   }
 
-  // Activity log
   const logBody = document.getElementById("log-body");
   logBody.innerHTML = "";
   if (log.length === 0) {

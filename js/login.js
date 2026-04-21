@@ -1,11 +1,7 @@
-/* ═══════════════════════════════════════════════
-   LesionLens — login.js
-   Auth, localStorage tracking, form validation
-   ═══════════════════════════════════════════════ */
-
 document.body.style.opacity = "1";
 
-// ── Storage helpers ───────────────────────────────
+let isSignup = false;
+
 function getStats() {
   try { return JSON.parse(localStorage.getItem("ll_stats") || "{}"); } catch { return {}; }
 }
@@ -36,7 +32,6 @@ function recordGuest() {
   saveStats(s);
 }
 
-// ── Password toggle ───────────────────────────────
 function togglePwd(btn) {
   const inp = document.getElementById("password");
   const show = inp.type === "text";
@@ -46,7 +41,6 @@ function togglePwd(btn) {
     : '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
 }
 
-// ── Error helpers ─────────────────────────────────
 function showErr(msg) {
   const el = document.getElementById("form-error");
   el.textContent = "⚠  " + msg; el.style.display = "block";
@@ -55,7 +49,6 @@ function showErr(msg) {
 }
 function hideErr() { document.getElementById("form-error").style.display = "none"; }
 
-// ── Login handler ─────────────────────────────────
 function handleLogin() {
   const email = document.getElementById("email").value.trim().toLowerCase();
   const pass  = document.getElementById("password").value;
@@ -69,17 +62,85 @@ function handleLogin() {
   const btn = document.getElementById("login-btn");
   const txt = document.getElementById("login-txt");
   btn.disabled = true; txt.textContent = "⏳  Signing in…";
-  recordLogin(email);
-  setTimeout(goToApp, 900);
+
+  fetch("http://localhost:5000/api/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password: pass })
+  }).then(r => r.json()).then(data => {
+    if (data.status === "ok") {
+      sessionStorage.setItem("nd_email", email);
+      recordLogin(email);
+      setTimeout(() => goToApp("gmail"), 900);
+    } else {
+      showErr(data.error);
+      btn.disabled = false; txt.textContent = "→ Sign in with Gmail";
+    }
+  }).catch(e => {
+    showErr("Network error. Is Flask running?");
+    btn.disabled = false; txt.textContent = "→ Sign in with Gmail";
+  });
 }
 
 function handleGuest() {
   recordGuest();
-  goToApp();
+  goToApp("guest");
 }
 
-function goToApp() {
-  sessionStorage.setItem("nd_auth", "1");
+function showSignup() {
+  isSignup = true;
+  document.querySelector(".form-title").textContent = "Create Account";
+  document.querySelector(".form-sub").textContent = "Sign up with your Gmail to access the dashboard";
+  document.getElementById("login-btn").onclick = handleSignup;
+  document.getElementById("login-txt").textContent = "→ Sign up with Gmail";
+  document.querySelector(".signup-link").innerHTML = "Already have an account? <a href='#' onclick='showLogin()'>Sign in</a>";
+}
+
+function showLogin() {
+  isSignup = false;
+  document.querySelector(".form-title").textContent = "Welcome back";
+  document.querySelector(".form-sub").textContent = "Sign in with your Gmail to access the dashboard";
+  document.getElementById("login-btn").onclick = handleLogin;
+  document.getElementById("login-txt").textContent = "→ Sign in with Gmail";
+  document.querySelector(".signup-link").innerHTML = "New user? <a href='#' onclick='showSignup()'>Sign up here</a>";
+}
+
+function handleSignup() {
+  const email = document.getElementById("email").value.trim().toLowerCase();
+  const pass  = document.getElementById("password").value;
+  hideErr();
+  if (!email)                           { showErr("Email address is required."); return; }
+  if (!email.endsWith("@gmail.com"))    { showErr("Please use a Gmail address (e.g. yourname@gmail.com)"); return; }
+  if (email.length < 12)               { showErr("Please enter a valid Gmail address."); return; }
+  if (!pass)                            { showErr("Password is required."); return; }
+  if (pass.length < 6)                  { showErr("Password must be at least 6 characters."); return; }
+
+  const btn = document.getElementById("login-btn");
+  const txt = document.getElementById("login-txt");
+  btn.disabled = true; txt.textContent = "⏳  Signing up…";
+
+  fetch("http://localhost:5000/api/signup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password: pass })
+  }).then(r => r.json()).then(data => {
+    if (data.status === "ok") {
+      sessionStorage.setItem("nd_email", email);
+      recordLogin(email);
+      setTimeout(() => goToApp("gmail"), 900);
+    } else {
+      showErr(data.error);
+      btn.disabled = false; txt.textContent = "→ Sign up with Gmail";
+    }
+  }).catch(e => {
+    showErr("Network error. Is Flask running?");
+    btn.disabled = false; txt.textContent = "→ Sign up with Gmail";
+  });
+}
+
+function goToApp(authType = "gmail") {
+  sessionStorage.setItem("nd_auth", authType);
+  if (isSignup) sessionStorage.setItem("nd_email", document.getElementById("email").value.trim().toLowerCase());
   document.body.style.opacity = "0";
   document.body.style.transition = "opacity 0.4s ease";
   setTimeout(() => window.location.href = "index.html", 420);
@@ -87,7 +148,9 @@ function goToApp() {
 
 document.addEventListener("keydown", e => { if (e.key === "Enter") handleLogin(); });
 
-// Expose globally
 window.handleLogin  = handleLogin;
 window.handleGuest  = handleGuest;
 window.togglePwd    = togglePwd;
+window.showSignup   = showSignup;
+window.showLogin    = showLogin;
+window.handleSignup = handleSignup;

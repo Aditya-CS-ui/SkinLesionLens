@@ -1,8 +1,3 @@
-/* ═══════════════════════════════════════════════
-   LesionLens — particles.js
-   Cursor-reactive particle background
-   ═══════════════════════════════════════════════ */
-
 (function () {
   const canvas = document.getElementById("bg-canvas");
   if (!canvas) return;
@@ -26,7 +21,7 @@
     this.vx = this.baseVx;
     this.vy = this.baseVy;
     this.a = Math.random() * 0.35 + 0.05;
-    this.c = Math.random() > 0.6 ? "rgba(0,210,255," : "rgba(0,255,136,";
+    this.c = Math.random() > 0.6 ? "rgba(59,158,255," : "rgba(86,207,250,";
   }
 
   function init() {
@@ -37,15 +32,11 @@
 
   function draw() {
     ctx.clearRect(0, 0, W, H);
-
-    // Mouse glow
     const grd = ctx.createRadialGradient(mouseX, mouseY, 0, mouseX, mouseY, 280);
-    grd.addColorStop(0, "rgba(0,210,255,0.045)");
+    grd.addColorStop(0, "rgba(59,158,255,0.045)");
     grd.addColorStop(1, "transparent");
     ctx.fillStyle = grd;
     ctx.fillRect(0, 0, W, H);
-
-    // Update positions
     pts.forEach(p => {
       const dx = mouseX - p.x, dy = mouseY - p.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -56,15 +47,13 @@
       if (p.x < 0 || p.x > W) p.baseVx *= -1;
       if (p.y < 0 || p.y > H) p.baseVy *= -1;
     });
-
-    // Connection lines
     for (let i = 0; i < pts.length; i++) {
       for (let j = i + 1; j < pts.length; j++) {
         const dx = pts[i].x - pts[j].x, dy = pts[i].y - pts[j].y;
         const d = Math.sqrt(dx * dx + dy * dy);
         if (d < 120) {
           ctx.beginPath();
-          ctx.strokeStyle = `rgba(0,210,255,${(1 - d / 120) * 0.08})`;
+          ctx.strokeStyle = `rgba(59,158,255,${(1 - d / 120) * 0.08})`;
           ctx.lineWidth = 0.5;
           ctx.moveTo(pts[i].x, pts[i].y);
           ctx.lineTo(pts[j].x, pts[j].y);
@@ -72,8 +61,6 @@
         }
       }
     }
-
-    // Draw dots
     pts.forEach(p => {
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.s, 0, Math.PI * 2);
